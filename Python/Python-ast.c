@@ -28,9 +28,13 @@ static char *Suite_fields[]={
 static PyTypeObject *stmt_type;
 _Py_IDENTIFIER(lineno);
 _Py_IDENTIFIER(col_offset);
+_Py_IDENTIFIER(endline);
+_Py_IDENTIFIER(endcol);
 static char *stmt_attributes[] = {
     "lineno",
     "col_offset",
+    "endline",
+    "endcol",
 };
 static PyObject* ast2obj_stmt(void*);
 static PyTypeObject *FunctionDef_type;
@@ -189,6 +193,8 @@ static PyTypeObject *expr_type;
 static char *expr_attributes[] = {
     "lineno",
     "col_offset",
+    "endline",
+    "endcol",
 };
 static PyObject* ast2obj_expr(void*);
 static PyTypeObject *BoolOp_type;
@@ -868,7 +874,7 @@ static int init_types(void)
     if (!Suite_type) return 0;
     stmt_type = make_type("stmt", &AST_type, NULL, 0);
     if (!stmt_type) return 0;
-    if (!add_attributes(stmt_type, stmt_attributes, 2)) return 0;
+    if (!add_attributes(stmt_type, stmt_attributes, 4)) return 0;
     FunctionDef_type = make_type("FunctionDef", stmt_type, FunctionDef_fields,
                                  5);
     if (!FunctionDef_type) return 0;
@@ -923,7 +929,7 @@ static int init_types(void)
     if (!Continue_type) return 0;
     expr_type = make_type("expr", &AST_type, NULL, 0);
     if (!expr_type) return 0;
-    if (!add_attributes(expr_type, expr_attributes, 2)) return 0;
+    if (!add_attributes(expr_type, expr_attributes, 4)) return 0;
     BoolOp_type = make_type("BoolOp", expr_type, BoolOp_fields, 2);
     if (!BoolOp_type) return 0;
     BinOp_type = make_type("BinOp", expr_type, BinOp_fields, 3);
@@ -1256,8 +1262,8 @@ Suite(asdl_seq * body, PyArena *arena)
 
 stmt_ty
 FunctionDef(identifier name, arguments_ty args, asdl_seq * body, asdl_seq *
-            decorator_list, expr_ty returns, int lineno, int col_offset,
-            PyArena *arena)
+            decorator_list, expr_ty returns, int lineno, int col_offset, int
+            endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!name) {
@@ -1281,13 +1287,15 @@ FunctionDef(identifier name, arguments_ty args, asdl_seq * body, asdl_seq *
     p->v.FunctionDef.returns = returns;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 AsyncFunctionDef(identifier name, arguments_ty args, asdl_seq * body, asdl_seq
                  * decorator_list, expr_ty returns, int lineno, int col_offset,
-                 PyArena *arena)
+                 int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!name) {
@@ -1311,13 +1319,15 @@ AsyncFunctionDef(identifier name, arguments_ty args, asdl_seq * body, asdl_seq
     p->v.AsyncFunctionDef.returns = returns;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 ClassDef(identifier name, asdl_seq * bases, asdl_seq * keywords, asdl_seq *
-         body, asdl_seq * decorator_list, int lineno, int col_offset, PyArena
-         *arena)
+         body, asdl_seq * decorator_list, int lineno, int col_offset, int
+         endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!name) {
@@ -1336,11 +1346,14 @@ ClassDef(identifier name, asdl_seq * bases, asdl_seq * keywords, asdl_seq *
     p->v.ClassDef.decorator_list = decorator_list;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Return(expr_ty value, int lineno, int col_offset, PyArena *arena)
+Return(expr_ty value, int lineno, int col_offset, int endline, int endcol,
+       PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1350,11 +1363,14 @@ Return(expr_ty value, int lineno, int col_offset, PyArena *arena)
     p->v.Return.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Delete(asdl_seq * targets, int lineno, int col_offset, PyArena *arena)
+Delete(asdl_seq * targets, int lineno, int col_offset, int endline, int endcol,
+       PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1364,12 +1380,14 @@ Delete(asdl_seq * targets, int lineno, int col_offset, PyArena *arena)
     p->v.Delete.targets = targets;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Assign(asdl_seq * targets, expr_ty value, int lineno, int col_offset, PyArena
-       *arena)
+Assign(asdl_seq * targets, expr_ty value, int lineno, int col_offset, int
+       endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!value) {
@@ -1385,12 +1403,14 @@ Assign(asdl_seq * targets, expr_ty value, int lineno, int col_offset, PyArena
     p->v.Assign.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 AugAssign(expr_ty target, operator_ty op, expr_ty value, int lineno, int
-          col_offset, PyArena *arena)
+          col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!target) {
@@ -1417,12 +1437,14 @@ AugAssign(expr_ty target, operator_ty op, expr_ty value, int lineno, int
     p->v.AugAssign.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 AnnAssign(expr_ty target, expr_ty annotation, expr_ty value, int simple, int
-          lineno, int col_offset, PyArena *arena)
+          lineno, int col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!target) {
@@ -1445,12 +1467,14 @@ AnnAssign(expr_ty target, expr_ty annotation, expr_ty value, int simple, int
     p->v.AnnAssign.simple = simple;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 For(expr_ty target, expr_ty iter, asdl_seq * body, asdl_seq * orelse, int
-    lineno, int col_offset, PyArena *arena)
+    lineno, int col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!target) {
@@ -1473,12 +1497,14 @@ For(expr_ty target, expr_ty iter, asdl_seq * body, asdl_seq * orelse, int
     p->v.For.orelse = orelse;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 AsyncFor(expr_ty target, expr_ty iter, asdl_seq * body, asdl_seq * orelse, int
-         lineno, int col_offset, PyArena *arena)
+         lineno, int col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!target) {
@@ -1501,12 +1527,14 @@ AsyncFor(expr_ty target, expr_ty iter, asdl_seq * body, asdl_seq * orelse, int
     p->v.AsyncFor.orelse = orelse;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 While(expr_ty test, asdl_seq * body, asdl_seq * orelse, int lineno, int
-      col_offset, PyArena *arena)
+      col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!test) {
@@ -1523,12 +1551,14 @@ While(expr_ty test, asdl_seq * body, asdl_seq * orelse, int lineno, int
     p->v.While.orelse = orelse;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 If(expr_ty test, asdl_seq * body, asdl_seq * orelse, int lineno, int
-   col_offset, PyArena *arena)
+   col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!test) {
@@ -1545,12 +1575,14 @@ If(expr_ty test, asdl_seq * body, asdl_seq * orelse, int lineno, int
     p->v.If.orelse = orelse;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-With(asdl_seq * items, asdl_seq * body, int lineno, int col_offset, PyArena
-     *arena)
+With(asdl_seq * items, asdl_seq * body, int lineno, int col_offset, int
+     endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1561,12 +1593,14 @@ With(asdl_seq * items, asdl_seq * body, int lineno, int col_offset, PyArena
     p->v.With.body = body;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-AsyncWith(asdl_seq * items, asdl_seq * body, int lineno, int col_offset,
-          PyArena *arena)
+AsyncWith(asdl_seq * items, asdl_seq * body, int lineno, int col_offset, int
+          endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1577,11 +1611,14 @@ AsyncWith(asdl_seq * items, asdl_seq * body, int lineno, int col_offset,
     p->v.AsyncWith.body = body;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Raise(expr_ty exc, expr_ty cause, int lineno, int col_offset, PyArena *arena)
+Raise(expr_ty exc, expr_ty cause, int lineno, int col_offset, int endline, int
+      endcol, PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1592,12 +1629,15 @@ Raise(expr_ty exc, expr_ty cause, int lineno, int col_offset, PyArena *arena)
     p->v.Raise.cause = cause;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 Try(asdl_seq * body, asdl_seq * handlers, asdl_seq * orelse, asdl_seq *
-    finalbody, int lineno, int col_offset, PyArena *arena)
+    finalbody, int lineno, int col_offset, int endline, int endcol, PyArena
+    *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1610,11 +1650,14 @@ Try(asdl_seq * body, asdl_seq * handlers, asdl_seq * orelse, asdl_seq *
     p->v.Try.finalbody = finalbody;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Assert(expr_ty test, expr_ty msg, int lineno, int col_offset, PyArena *arena)
+Assert(expr_ty test, expr_ty msg, int lineno, int col_offset, int endline, int
+       endcol, PyArena *arena)
 {
     stmt_ty p;
     if (!test) {
@@ -1630,11 +1673,14 @@ Assert(expr_ty test, expr_ty msg, int lineno, int col_offset, PyArena *arena)
     p->v.Assert.msg = msg;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Import(asdl_seq * names, int lineno, int col_offset, PyArena *arena)
+Import(asdl_seq * names, int lineno, int col_offset, int endline, int endcol,
+       PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1644,12 +1690,14 @@ Import(asdl_seq * names, int lineno, int col_offset, PyArena *arena)
     p->v.Import.names = names;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
 ImportFrom(identifier module, asdl_seq * names, int level, int lineno, int
-           col_offset, PyArena *arena)
+           col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1661,11 +1709,14 @@ ImportFrom(identifier module, asdl_seq * names, int level, int lineno, int
     p->v.ImportFrom.level = level;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Global(asdl_seq * names, int lineno, int col_offset, PyArena *arena)
+Global(asdl_seq * names, int lineno, int col_offset, int endline, int endcol,
+       PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1675,11 +1726,14 @@ Global(asdl_seq * names, int lineno, int col_offset, PyArena *arena)
     p->v.Global.names = names;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Nonlocal(asdl_seq * names, int lineno, int col_offset, PyArena *arena)
+Nonlocal(asdl_seq * names, int lineno, int col_offset, int endline, int endcol,
+         PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1689,11 +1743,14 @@ Nonlocal(asdl_seq * names, int lineno, int col_offset, PyArena *arena)
     p->v.Nonlocal.names = names;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Expr(expr_ty value, int lineno, int col_offset, PyArena *arena)
+Expr(expr_ty value, int lineno, int col_offset, int endline, int endcol,
+     PyArena *arena)
 {
     stmt_ty p;
     if (!value) {
@@ -1708,11 +1765,13 @@ Expr(expr_ty value, int lineno, int col_offset, PyArena *arena)
     p->v.Expr.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Pass(int lineno, int col_offset, PyArena *arena)
+Pass(int lineno, int col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1721,11 +1780,13 @@ Pass(int lineno, int col_offset, PyArena *arena)
     p->kind = Pass_kind;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Break(int lineno, int col_offset, PyArena *arena)
+Break(int lineno, int col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1734,11 +1795,13 @@ Break(int lineno, int col_offset, PyArena *arena)
     p->kind = Break_kind;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 stmt_ty
-Continue(int lineno, int col_offset, PyArena *arena)
+Continue(int lineno, int col_offset, int endline, int endcol, PyArena *arena)
 {
     stmt_ty p;
     p = (stmt_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1747,12 +1810,14 @@ Continue(int lineno, int col_offset, PyArena *arena)
     p->kind = Continue_kind;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-BoolOp(boolop_ty op, asdl_seq * values, int lineno, int col_offset, PyArena
-       *arena)
+BoolOp(boolop_ty op, asdl_seq * values, int lineno, int col_offset, int
+       endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!op) {
@@ -1768,12 +1833,14 @@ BoolOp(boolop_ty op, asdl_seq * values, int lineno, int col_offset, PyArena
     p->v.BoolOp.values = values;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 BinOp(expr_ty left, operator_ty op, expr_ty right, int lineno, int col_offset,
-      PyArena *arena)
+      int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!left) {
@@ -1800,12 +1867,14 @@ BinOp(expr_ty left, operator_ty op, expr_ty right, int lineno, int col_offset,
     p->v.BinOp.right = right;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-UnaryOp(unaryop_ty op, expr_ty operand, int lineno, int col_offset, PyArena
-        *arena)
+UnaryOp(unaryop_ty op, expr_ty operand, int lineno, int col_offset, int
+        endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!op) {
@@ -1826,12 +1895,14 @@ UnaryOp(unaryop_ty op, expr_ty operand, int lineno, int col_offset, PyArena
     p->v.UnaryOp.operand = operand;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Lambda(arguments_ty args, expr_ty body, int lineno, int col_offset, PyArena
-       *arena)
+Lambda(arguments_ty args, expr_ty body, int lineno, int col_offset, int
+       endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!args) {
@@ -1852,12 +1923,14 @@ Lambda(arguments_ty args, expr_ty body, int lineno, int col_offset, PyArena
     p->v.Lambda.body = body;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 IfExp(expr_ty test, expr_ty body, expr_ty orelse, int lineno, int col_offset,
-      PyArena *arena)
+      int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!test) {
@@ -1884,12 +1957,14 @@ IfExp(expr_ty test, expr_ty body, expr_ty orelse, int lineno, int col_offset,
     p->v.IfExp.orelse = orelse;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Dict(asdl_seq * keys, asdl_seq * values, int lineno, int col_offset, PyArena
-     *arena)
+Dict(asdl_seq * keys, asdl_seq * values, int lineno, int col_offset, int
+     endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     p = (expr_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1900,11 +1975,14 @@ Dict(asdl_seq * keys, asdl_seq * values, int lineno, int col_offset, PyArena
     p->v.Dict.values = values;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Set(asdl_seq * elts, int lineno, int col_offset, PyArena *arena)
+Set(asdl_seq * elts, int lineno, int col_offset, int endline, int endcol,
+    PyArena *arena)
 {
     expr_ty p;
     p = (expr_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -1914,12 +1992,14 @@ Set(asdl_seq * elts, int lineno, int col_offset, PyArena *arena)
     p->v.Set.elts = elts;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-ListComp(expr_ty elt, asdl_seq * generators, int lineno, int col_offset,
-         PyArena *arena)
+ListComp(expr_ty elt, asdl_seq * generators, int lineno, int col_offset, int
+         endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!elt) {
@@ -1935,12 +2015,14 @@ ListComp(expr_ty elt, asdl_seq * generators, int lineno, int col_offset,
     p->v.ListComp.generators = generators;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-SetComp(expr_ty elt, asdl_seq * generators, int lineno, int col_offset, PyArena
-        *arena)
+SetComp(expr_ty elt, asdl_seq * generators, int lineno, int col_offset, int
+        endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!elt) {
@@ -1956,12 +2038,14 @@ SetComp(expr_ty elt, asdl_seq * generators, int lineno, int col_offset, PyArena
     p->v.SetComp.generators = generators;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 DictComp(expr_ty key, expr_ty value, asdl_seq * generators, int lineno, int
-         col_offset, PyArena *arena)
+         col_offset, int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!key) {
@@ -1983,12 +2067,14 @@ DictComp(expr_ty key, expr_ty value, asdl_seq * generators, int lineno, int
     p->v.DictComp.generators = generators;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 GeneratorExp(expr_ty elt, asdl_seq * generators, int lineno, int col_offset,
-             PyArena *arena)
+             int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!elt) {
@@ -2004,11 +2090,14 @@ GeneratorExp(expr_ty elt, asdl_seq * generators, int lineno, int col_offset,
     p->v.GeneratorExp.generators = generators;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Await(expr_ty value, int lineno, int col_offset, PyArena *arena)
+Await(expr_ty value, int lineno, int col_offset, int endline, int endcol,
+      PyArena *arena)
 {
     expr_ty p;
     if (!value) {
@@ -2023,11 +2112,14 @@ Await(expr_ty value, int lineno, int col_offset, PyArena *arena)
     p->v.Await.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Yield(expr_ty value, int lineno, int col_offset, PyArena *arena)
+Yield(expr_ty value, int lineno, int col_offset, int endline, int endcol,
+      PyArena *arena)
 {
     expr_ty p;
     p = (expr_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -2037,11 +2129,14 @@ Yield(expr_ty value, int lineno, int col_offset, PyArena *arena)
     p->v.Yield.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-YieldFrom(expr_ty value, int lineno, int col_offset, PyArena *arena)
+YieldFrom(expr_ty value, int lineno, int col_offset, int endline, int endcol,
+          PyArena *arena)
 {
     expr_ty p;
     if (!value) {
@@ -2056,12 +2151,14 @@ YieldFrom(expr_ty value, int lineno, int col_offset, PyArena *arena)
     p->v.YieldFrom.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 Compare(expr_ty left, asdl_int_seq * ops, asdl_seq * comparators, int lineno,
-        int col_offset, PyArena *arena)
+        int col_offset, int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!left) {
@@ -2078,12 +2175,14 @@ Compare(expr_ty left, asdl_int_seq * ops, asdl_seq * comparators, int lineno,
     p->v.Compare.comparators = comparators;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 Call(expr_ty func, asdl_seq * args, asdl_seq * keywords, int lineno, int
-     col_offset, PyArena *arena)
+     col_offset, int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!func) {
@@ -2100,11 +2199,14 @@ Call(expr_ty func, asdl_seq * args, asdl_seq * keywords, int lineno, int
     p->v.Call.keywords = keywords;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Num(object n, int lineno, int col_offset, PyArena *arena)
+Num(object n, int lineno, int col_offset, int endline, int endcol, PyArena
+    *arena)
 {
     expr_ty p;
     if (!n) {
@@ -2119,11 +2221,14 @@ Num(object n, int lineno, int col_offset, PyArena *arena)
     p->v.Num.n = n;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Str(string s, int lineno, int col_offset, PyArena *arena)
+Str(string s, int lineno, int col_offset, int endline, int endcol, PyArena
+    *arena)
 {
     expr_ty p;
     if (!s) {
@@ -2138,12 +2243,14 @@ Str(string s, int lineno, int col_offset, PyArena *arena)
     p->v.Str.s = s;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 FormattedValue(expr_ty value, int conversion, expr_ty format_spec, int lineno,
-               int col_offset, PyArena *arena)
+               int col_offset, int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!value) {
@@ -2160,11 +2267,14 @@ FormattedValue(expr_ty value, int conversion, expr_ty format_spec, int lineno,
     p->v.FormattedValue.format_spec = format_spec;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-JoinedStr(asdl_seq * values, int lineno, int col_offset, PyArena *arena)
+JoinedStr(asdl_seq * values, int lineno, int col_offset, int endline, int
+          endcol, PyArena *arena)
 {
     expr_ty p;
     p = (expr_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -2174,11 +2284,14 @@ JoinedStr(asdl_seq * values, int lineno, int col_offset, PyArena *arena)
     p->v.JoinedStr.values = values;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Bytes(bytes s, int lineno, int col_offset, PyArena *arena)
+Bytes(bytes s, int lineno, int col_offset, int endline, int endcol, PyArena
+      *arena)
 {
     expr_ty p;
     if (!s) {
@@ -2193,11 +2306,14 @@ Bytes(bytes s, int lineno, int col_offset, PyArena *arena)
     p->v.Bytes.s = s;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-NameConstant(singleton value, int lineno, int col_offset, PyArena *arena)
+NameConstant(singleton value, int lineno, int col_offset, int endline, int
+             endcol, PyArena *arena)
 {
     expr_ty p;
     if (!value) {
@@ -2212,11 +2328,13 @@ NameConstant(singleton value, int lineno, int col_offset, PyArena *arena)
     p->v.NameConstant.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Ellipsis(int lineno, int col_offset, PyArena *arena)
+Ellipsis(int lineno, int col_offset, int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     p = (expr_ty)PyArena_Malloc(arena, sizeof(*p));
@@ -2225,11 +2343,14 @@ Ellipsis(int lineno, int col_offset, PyArena *arena)
     p->kind = Ellipsis_kind;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Constant(constant value, int lineno, int col_offset, PyArena *arena)
+Constant(constant value, int lineno, int col_offset, int endline, int endcol,
+         PyArena *arena)
 {
     expr_ty p;
     if (!value) {
@@ -2244,12 +2365,14 @@ Constant(constant value, int lineno, int col_offset, PyArena *arena)
     p->v.Constant.value = value;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 Attribute(expr_ty value, identifier attr, expr_context_ty ctx, int lineno, int
-          col_offset, PyArena *arena)
+          col_offset, int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!value) {
@@ -2276,12 +2399,14 @@ Attribute(expr_ty value, identifier attr, expr_context_ty ctx, int lineno, int
     p->v.Attribute.ctx = ctx;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
 Subscript(expr_ty value, slice_ty slice, expr_context_ty ctx, int lineno, int
-          col_offset, PyArena *arena)
+          col_offset, int endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!value) {
@@ -2308,12 +2433,14 @@ Subscript(expr_ty value, slice_ty slice, expr_context_ty ctx, int lineno, int
     p->v.Subscript.ctx = ctx;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Starred(expr_ty value, expr_context_ty ctx, int lineno, int col_offset, PyArena
-        *arena)
+Starred(expr_ty value, expr_context_ty ctx, int lineno, int col_offset, int
+        endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!value) {
@@ -2334,12 +2461,14 @@ Starred(expr_ty value, expr_context_ty ctx, int lineno, int col_offset, PyArena
     p->v.Starred.ctx = ctx;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Name(identifier id, expr_context_ty ctx, int lineno, int col_offset, PyArena
-     *arena)
+Name(identifier id, expr_context_ty ctx, int lineno, int col_offset, int
+     endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!id) {
@@ -2360,12 +2489,14 @@ Name(identifier id, expr_context_ty ctx, int lineno, int col_offset, PyArena
     p->v.Name.ctx = ctx;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-List(asdl_seq * elts, expr_context_ty ctx, int lineno, int col_offset, PyArena
-     *arena)
+List(asdl_seq * elts, expr_context_ty ctx, int lineno, int col_offset, int
+     endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!ctx) {
@@ -2381,12 +2512,14 @@ List(asdl_seq * elts, expr_context_ty ctx, int lineno, int col_offset, PyArena
     p->v.List.ctx = ctx;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
 expr_ty
-Tuple(asdl_seq * elts, expr_context_ty ctx, int lineno, int col_offset, PyArena
-      *arena)
+Tuple(asdl_seq * elts, expr_context_ty ctx, int lineno, int col_offset, int
+      endline, int endcol, PyArena *arena)
 {
     expr_ty p;
     if (!ctx) {
@@ -2402,6 +2535,8 @@ Tuple(asdl_seq * elts, expr_context_ty ctx, int lineno, int col_offset, PyArena
     p->v.Tuple.ctx = ctx;
     p->lineno = lineno;
     p->col_offset = col_offset;
+    p->endline = endline;
+    p->endcol = endcol;
     return p;
 }
 
@@ -3052,6 +3187,16 @@ ast2obj_stmt(void* _o)
     if (_PyObject_SetAttrId(result, &PyId_col_offset, value) < 0)
         goto failed;
     Py_DECREF(value);
+    value = ast2obj_int(o->endline);
+    if (!value) goto failed;
+    if (_PyObject_SetAttrId(result, &PyId_endline, value) < 0)
+        goto failed;
+    Py_DECREF(value);
+    value = ast2obj_int(o->endcol);
+    if (!value) goto failed;
+    if (_PyObject_SetAttrId(result, &PyId_endcol, value) < 0)
+        goto failed;
+    Py_DECREF(value);
     return result;
 failed:
     Py_XDECREF(value);
@@ -3486,6 +3631,16 @@ ast2obj_expr(void* _o)
     value = ast2obj_int(o->col_offset);
     if (!value) goto failed;
     if (_PyObject_SetAttrId(result, &PyId_col_offset, value) < 0)
+        goto failed;
+    Py_DECREF(value);
+    value = ast2obj_int(o->endline);
+    if (!value) goto failed;
+    if (_PyObject_SetAttrId(result, &PyId_endline, value) < 0)
+        goto failed;
+    Py_DECREF(value);
+    value = ast2obj_int(o->endcol);
+    if (!value) goto failed;
+    if (_PyObject_SetAttrId(result, &PyId_endcol, value) < 0)
         goto failed;
     Py_DECREF(value);
     return result;
@@ -4129,6 +4284,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
     PyObject *tmp = NULL;
     int lineno;
     int col_offset;
+    int endline;
+    int endcol;
 
     if (obj == Py_None) {
         *out = NULL;
@@ -4154,6 +4311,28 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
         Py_CLEAR(tmp);
     } else {
         PyErr_SetString(PyExc_TypeError, "required field \"col_offset\" missing from stmt");
+        return 1;
+    }
+    if (_PyObject_HasAttrId(obj, &PyId_endline)) {
+        int res;
+        tmp = _PyObject_GetAttrId(obj, &PyId_endline);
+        if (tmp == NULL) goto failed;
+        res = obj2ast_int(tmp, &endline, arena);
+        if (res != 0) goto failed;
+        Py_CLEAR(tmp);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "required field \"endline\" missing from stmt");
+        return 1;
+    }
+    if (_PyObject_HasAttrId(obj, &PyId_endcol)) {
+        int res;
+        tmp = _PyObject_GetAttrId(obj, &PyId_endcol);
+        if (tmp == NULL) goto failed;
+        res = obj2ast_int(tmp, &endcol, arena);
+        if (res != 0) goto failed;
+        Py_CLEAR(tmp);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "required field \"endcol\" missing from stmt");
         return 1;
     }
     isinstance = PyObject_IsInstance(obj, (PyObject*)FunctionDef_type);
@@ -4256,7 +4435,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             returns = NULL;
         }
         *out = FunctionDef(name, args, body, decorator_list, returns, lineno,
-                           col_offset, arena);
+                           col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4360,7 +4539,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             returns = NULL;
         }
         *out = AsyncFunctionDef(name, args, body, decorator_list, returns,
-                                lineno, col_offset, arena);
+                                lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4499,7 +4678,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             return 1;
         }
         *out = ClassDef(name, bases, keywords, body, decorator_list, lineno,
-                        col_offset, arena);
+                        col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4520,7 +4699,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
         } else {
             value = NULL;
         }
-        *out = Return(value, lineno, col_offset, arena);
+        *out = Return(value, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4559,7 +4738,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"targets\" missing from Delete");
             return 1;
         }
-        *out = Delete(targets, lineno, col_offset, arena);
+        *out = Delete(targets, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4610,7 +4789,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"value\" missing from Assign");
             return 1;
         }
-        *out = Assign(targets, value, lineno, col_offset, arena);
+        *out = Assign(targets, value, lineno, col_offset, endline, endcol,
+                      arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4656,7 +4836,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"value\" missing from AugAssign");
             return 1;
         }
-        *out = AugAssign(target, op, value, lineno, col_offset, arena);
+        *out = AugAssign(target, op, value, lineno, col_offset, endline,
+                         endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4714,7 +4895,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             return 1;
         }
         *out = AnnAssign(target, annotation, value, simple, lineno, col_offset,
-                         arena);
+                         endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4806,7 +4987,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"orelse\" missing from For");
             return 1;
         }
-        *out = For(target, iter, body, orelse, lineno, col_offset, arena);
+        *out = For(target, iter, body, orelse, lineno, col_offset, endline,
+                   endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4898,7 +5080,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"orelse\" missing from AsyncFor");
             return 1;
         }
-        *out = AsyncFor(target, iter, body, orelse, lineno, col_offset, arena);
+        *out = AsyncFor(target, iter, body, orelse, lineno, col_offset,
+                        endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -4978,7 +5161,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"orelse\" missing from While");
             return 1;
         }
-        *out = While(test, body, orelse, lineno, col_offset, arena);
+        *out = While(test, body, orelse, lineno, col_offset, endline, endcol,
+                     arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5058,7 +5242,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"orelse\" missing from If");
             return 1;
         }
-        *out = If(test, body, orelse, lineno, col_offset, arena);
+        *out = If(test, body, orelse, lineno, col_offset, endline, endcol,
+                  arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5126,7 +5311,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"body\" missing from With");
             return 1;
         }
-        *out = With(items, body, lineno, col_offset, arena);
+        *out = With(items, body, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5194,7 +5379,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"body\" missing from AsyncWith");
             return 1;
         }
-        *out = AsyncWith(items, body, lineno, col_offset, arena);
+        *out = AsyncWith(items, body, lineno, col_offset, endline, endcol,
+                         arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5226,7 +5412,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
         } else {
             cause = NULL;
         }
-        *out = Raise(exc, cause, lineno, col_offset, arena);
+        *out = Raise(exc, cause, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5353,7 +5539,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             return 1;
         }
         *out = Try(body, handlers, orelse, finalbody, lineno, col_offset,
-                   arena);
+                   endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5386,7 +5572,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
         } else {
             msg = NULL;
         }
-        *out = Assert(test, msg, lineno, col_offset, arena);
+        *out = Assert(test, msg, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5425,7 +5611,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"names\" missing from Import");
             return 1;
         }
-        *out = Import(names, lineno, col_offset, arena);
+        *out = Import(names, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5486,7 +5672,8 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
         } else {
             level = 0;
         }
-        *out = ImportFrom(module, names, level, lineno, col_offset, arena);
+        *out = ImportFrom(module, names, level, lineno, col_offset, endline,
+                          endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5525,7 +5712,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"names\" missing from Global");
             return 1;
         }
-        *out = Global(names, lineno, col_offset, arena);
+        *out = Global(names, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5564,7 +5751,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"names\" missing from Nonlocal");
             return 1;
         }
-        *out = Nonlocal(names, lineno, col_offset, arena);
+        *out = Nonlocal(names, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5586,7 +5773,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"value\" missing from Expr");
             return 1;
         }
-        *out = Expr(value, lineno, col_offset, arena);
+        *out = Expr(value, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5596,7 +5783,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
     }
     if (isinstance) {
 
-        *out = Pass(lineno, col_offset, arena);
+        *out = Pass(lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5606,7 +5793,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
     }
     if (isinstance) {
 
-        *out = Break(lineno, col_offset, arena);
+        *out = Break(lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5616,7 +5803,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
     }
     if (isinstance) {
 
-        *out = Continue(lineno, col_offset, arena);
+        *out = Continue(lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5635,6 +5822,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
     PyObject *tmp = NULL;
     int lineno;
     int col_offset;
+    int endline;
+    int endcol;
 
     if (obj == Py_None) {
         *out = NULL;
@@ -5660,6 +5849,28 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
         Py_CLEAR(tmp);
     } else {
         PyErr_SetString(PyExc_TypeError, "required field \"col_offset\" missing from expr");
+        return 1;
+    }
+    if (_PyObject_HasAttrId(obj, &PyId_endline)) {
+        int res;
+        tmp = _PyObject_GetAttrId(obj, &PyId_endline);
+        if (tmp == NULL) goto failed;
+        res = obj2ast_int(tmp, &endline, arena);
+        if (res != 0) goto failed;
+        Py_CLEAR(tmp);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "required field \"endline\" missing from expr");
+        return 1;
+    }
+    if (_PyObject_HasAttrId(obj, &PyId_endcol)) {
+        int res;
+        tmp = _PyObject_GetAttrId(obj, &PyId_endcol);
+        if (tmp == NULL) goto failed;
+        res = obj2ast_int(tmp, &endcol, arena);
+        if (res != 0) goto failed;
+        Py_CLEAR(tmp);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "required field \"endcol\" missing from expr");
         return 1;
     }
     isinstance = PyObject_IsInstance(obj, (PyObject*)BoolOp_type);
@@ -5709,7 +5920,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"values\" missing from BoolOp");
             return 1;
         }
-        *out = BoolOp(op, values, lineno, col_offset, arena);
+        *out = BoolOp(op, values, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5755,7 +5966,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"right\" missing from BinOp");
             return 1;
         }
-        *out = BinOp(left, op, right, lineno, col_offset, arena);
+        *out = BinOp(left, op, right, lineno, col_offset, endline, endcol,
+                     arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5789,7 +6001,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"operand\" missing from UnaryOp");
             return 1;
         }
-        *out = UnaryOp(op, operand, lineno, col_offset, arena);
+        *out = UnaryOp(op, operand, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5823,7 +6035,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"body\" missing from Lambda");
             return 1;
         }
-        *out = Lambda(args, body, lineno, col_offset, arena);
+        *out = Lambda(args, body, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5869,7 +6081,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"orelse\" missing from IfExp");
             return 1;
         }
-        *out = IfExp(test, body, orelse, lineno, col_offset, arena);
+        *out = IfExp(test, body, orelse, lineno, col_offset, endline, endcol,
+                     arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5937,7 +6150,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"values\" missing from Dict");
             return 1;
         }
-        *out = Dict(keys, values, lineno, col_offset, arena);
+        *out = Dict(keys, values, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -5976,7 +6189,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"elts\" missing from Set");
             return 1;
         }
-        *out = Set(elts, lineno, col_offset, arena);
+        *out = Set(elts, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6027,7 +6240,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"generators\" missing from ListComp");
             return 1;
         }
-        *out = ListComp(elt, generators, lineno, col_offset, arena);
+        *out = ListComp(elt, generators, lineno, col_offset, endline, endcol,
+                        arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6078,7 +6292,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"generators\" missing from SetComp");
             return 1;
         }
-        *out = SetComp(elt, generators, lineno, col_offset, arena);
+        *out = SetComp(elt, generators, lineno, col_offset, endline, endcol,
+                       arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6141,7 +6356,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"generators\" missing from DictComp");
             return 1;
         }
-        *out = DictComp(key, value, generators, lineno, col_offset, arena);
+        *out = DictComp(key, value, generators, lineno, col_offset, endline,
+                        endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6192,7 +6408,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"generators\" missing from GeneratorExp");
             return 1;
         }
-        *out = GeneratorExp(elt, generators, lineno, col_offset, arena);
+        *out = GeneratorExp(elt, generators, lineno, col_offset, endline,
+                            endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6214,7 +6431,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"value\" missing from Await");
             return 1;
         }
-        *out = Await(value, lineno, col_offset, arena);
+        *out = Await(value, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6235,7 +6452,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
         } else {
             value = NULL;
         }
-        *out = Yield(value, lineno, col_offset, arena);
+        *out = Yield(value, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6257,7 +6474,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"value\" missing from YieldFrom");
             return 1;
         }
-        *out = YieldFrom(value, lineno, col_offset, arena);
+        *out = YieldFrom(value, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6337,7 +6554,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"comparators\" missing from Compare");
             return 1;
         }
-        *out = Compare(left, ops, comparators, lineno, col_offset, arena);
+        *out = Compare(left, ops, comparators, lineno, col_offset, endline,
+                       endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6417,7 +6635,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"keywords\" missing from Call");
             return 1;
         }
-        *out = Call(func, args, keywords, lineno, col_offset, arena);
+        *out = Call(func, args, keywords, lineno, col_offset, endline, endcol,
+                    arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6439,7 +6658,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"n\" missing from Num");
             return 1;
         }
-        *out = Num(n, lineno, col_offset, arena);
+        *out = Num(n, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6461,7 +6680,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"s\" missing from Str");
             return 1;
         }
-        *out = Str(s, lineno, col_offset, arena);
+        *out = Str(s, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6506,7 +6725,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             format_spec = NULL;
         }
         *out = FormattedValue(value, conversion, format_spec, lineno,
-                              col_offset, arena);
+                              col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6545,7 +6764,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"values\" missing from JoinedStr");
             return 1;
         }
-        *out = JoinedStr(values, lineno, col_offset, arena);
+        *out = JoinedStr(values, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6567,7 +6786,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"s\" missing from Bytes");
             return 1;
         }
-        *out = Bytes(s, lineno, col_offset, arena);
+        *out = Bytes(s, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6589,7 +6808,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"value\" missing from NameConstant");
             return 1;
         }
-        *out = NameConstant(value, lineno, col_offset, arena);
+        *out = NameConstant(value, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6599,7 +6818,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
     }
     if (isinstance) {
 
-        *out = Ellipsis(lineno, col_offset, arena);
+        *out = Ellipsis(lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6621,7 +6840,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"value\" missing from Constant");
             return 1;
         }
-        *out = Constant(value, lineno, col_offset, arena);
+        *out = Constant(value, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6667,7 +6886,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"ctx\" missing from Attribute");
             return 1;
         }
-        *out = Attribute(value, attr, ctx, lineno, col_offset, arena);
+        *out = Attribute(value, attr, ctx, lineno, col_offset, endline, endcol,
+                         arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6713,7 +6933,8 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"ctx\" missing from Subscript");
             return 1;
         }
-        *out = Subscript(value, slice, ctx, lineno, col_offset, arena);
+        *out = Subscript(value, slice, ctx, lineno, col_offset, endline,
+                         endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6747,7 +6968,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"ctx\" missing from Starred");
             return 1;
         }
-        *out = Starred(value, ctx, lineno, col_offset, arena);
+        *out = Starred(value, ctx, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6781,7 +7002,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"ctx\" missing from Name");
             return 1;
         }
-        *out = Name(id, ctx, lineno, col_offset, arena);
+        *out = Name(id, ctx, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6832,7 +7053,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"ctx\" missing from List");
             return 1;
         }
-        *out = List(elts, ctx, lineno, col_offset, arena);
+        *out = List(elts, ctx, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
@@ -6883,7 +7104,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             PyErr_SetString(PyExc_TypeError, "required field \"ctx\" missing from Tuple");
             return 1;
         }
-        *out = Tuple(elts, ctx, lineno, col_offset, arena);
+        *out = Tuple(elts, ctx, lineno, col_offset, endline, endcol, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
