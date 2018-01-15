@@ -1,5 +1,7 @@
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{553EC33E-9816-4996-A660-5D6186A0B0B3}"
 	ProjectSection(SolutionItems) = preProject
 		..\Modules\getbuildinfo.c = ..\Modules\getbuildinfo.c
@@ -137,22 +139,6 @@ Global
 		{E9E0A1F6-0009-4E8C-B8F8-1B8F5D49A058}.Release|Win32.Build.0 = Release|Win32
 		{E9E0A1F6-0009-4E8C-B8F8-1B8F5D49A058}.Release|x64.ActiveCfg = Release|x64
 		{E9E0A1F6-0009-4E8C-B8F8-1B8F5D49A058}.Release|x64.Build.0 = Release|x64
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.Debug|Win32.ActiveCfg = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.Debug|Win32.Build.0 = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.Debug|x64.ActiveCfg = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.Debug|x64.Build.0 = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.PGInstrument|Win32.ActiveCfg = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.PGInstrument|Win32.Build.0 = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.PGInstrument|x64.ActiveCfg = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.PGInstrument|x64.Build.0 = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.PGUpdate|Win32.ActiveCfg = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.PGUpdate|Win32.Build.0 = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.PGUpdate|x64.ActiveCfg = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.PGUpdate|x64.Build.0 = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.Release|Win32.ActiveCfg = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.Release|Win32.Build.0 = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.Release|x64.ActiveCfg = Release|Win32
-		{C73F0EC1-358B-4177-940F-0846AC8B04CD}.Release|x64.Build.0 = Release|Win32
 		{28B5D777-DDF2-4B6B-B34F-31D938813856}.Debug|Win32.ActiveCfg = Debug|Win32
 		{28B5D777-DDF2-4B6B-B34F-31D938813856}.Debug|Win32.Build.0 = Debug|Win32
 		{28B5D777-DDF2-4B6B-B34F-31D938813856}.Debug|x64.ActiveCfg = Debug|x64

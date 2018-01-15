@@ -551,9 +551,6 @@
     <ClCompile Include="..\Modules\zipimport.c">
       <Filter>Modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\zlibmodule.c">
-      <Filter>Modules</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\zlib\adler32.c">
       <Filter>Modules\zlib</Filter>
     </ClCompile>

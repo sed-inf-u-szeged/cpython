@@ -136,9 +136,14 @@ struct _inittab _PyImport_Inittab[] = {
 
     {"xxsubtype", initxxsubtype},
     {"zipimport", initzipimport},
+/* COLUMBUS hack */
+#if 0
     {"zlib", initzlib},
+#endif
 
     /* CJK codecs */
+/* COLUMBUS hack */
+#if 0
     {"_multibytecodec", init_multibytecodec},
     {"_codecs_cn", init_codecs_cn},
     {"_codecs_hk", init_codecs_hk},
@@ -146,6 +151,7 @@ struct _inittab _PyImport_Inittab[] = {
     {"_codecs_jp", init_codecs_jp},
     {"_codecs_kr", init_codecs_kr},
     {"_codecs_tw", init_codecs_tw},
+#endif
 
 /* tools/freeze/makeconfig.py marker for additional "_inittab" entries */
 /* -- ADDMODULE MARKER 2 -- */
@@ -163,7 +169,10 @@ struct _inittab _PyImport_Inittab[] = {
     {"exceptions", NULL},
     {"_warnings", _PyWarnings_Init},
 
+/* COLUMBUS hack */
+#if 0
     {"_io", init_io},
+#endif
 
     /* Sentinel */
     {0, 0}

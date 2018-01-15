@@ -57,6 +57,38 @@ new_identifier(const char* n, PyArena *arena) {
 
 #define NEW_IDENTIFIER(n) new_identifier(STR(n), c->c_arena)
 
+
+/* COLUMBUS hack */
+int GetEndLine(const node *n)
+{
+    int ret = 0;
+
+    if(n != NULL){
+        node *end = (node*)n;
+        while(ISNONTERMINAL(TYPE(end))){
+            end = CHILD(end, NCH(end)-1);
+        }
+        ret = end->n_lineno;
+    }
+    return ret;
+}
+
+int GetEndCol(const node *n)
+{
+    int ret = 0;
+
+    if(n != NULL){
+        node *end = (node*)n;
+        while(ISNONTERMINAL(TYPE(end))){
+            end = CHILD(end, NCH(end)-1);
+        }
+        if(end->n_str == 0) ret = end->n_col_offset;
+        else ret = end->n_col_offset + strlen(end->n_str);
+    }
+    return ret;
+}
+
+
 /* This routine provides an invalid object for the syntax error.
    The outermost routine must unpack this error and create the
    proper object.  We do this so that we don't have to pass
@@ -282,7 +314,7 @@ PyAST_FromNode(const node *n, PyCompilerFlags *flags, const char *filename,
                 stmts = asdl_seq_new(1, arena);
                 if (!stmts)
                     goto error;
-                asdl_seq_SET(stmts, 0, Pass(n->n_lineno, n->n_col_offset,
+                asdl_seq_SET(stmts, 0, Pass(n->n_lineno, n->n_col_offset, GetEndLine(n), GetEndCol(n),
                                             arena));
                 if (!asdl_seq_GET(stmts, 0))
                     goto error;
@@ -631,7 +663,7 @@ set_name:
             arg_id = NEW_IDENTIFIER(child);
             if (!arg_id)
                 return NULL;
-            arg = Name(arg_id, Store, LINENO(child), child->n_col_offset,
+            arg = Name(arg_id, Store, LINENO(child), child->n_col_offset, GetEndLine(child), GetEndCol(child),
                        c->c_arena);
         }
         else {
@@ -650,7 +682,7 @@ set_name:
         asdl_seq_SET(args, i, arg);
     }
 
-    result = Tuple(args, Store, LINENO(n), n->n_col_offset, c->c_arena);
+    result = Tuple(args, Store, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     if (!set_context(c, result, Store, n))
         return NULL;
     return result;
@@ -759,7 +791,7 @@ ast_for_arguments(struct compiling *c, const node *n)
                     if (!id)
                         return NULL;
                     name = Name(id, Param, LINENO(ch), ch->n_col_offset,
-                                c->c_arena);
+                                GetEndLine(ch), GetEndCol(ch), c->c_arena);
                     if (!name)
                         return NULL;
                     asdl_seq_SET(args, k++, name);
@@ -806,17 +838,20 @@ ast_for_dotted_name(struct compiling *c, const node *n)
     expr_ty e;
     identifier id;
     int lineno, col_offset;
+    int endline, endcol;
     int i;
 
     REQ(n, dotted_name);
 
     lineno = LINENO(n);
     col_offset = n->n_col_offset;
+    endline = GetEndLine(n);
+    endcol = GetEndCol(n);
 
     id = NEW_IDENTIFIER(CHILD(n, 0));
     if (!id)
         return NULL;
-    e = Name(id, Load, lineno, col_offset, c->c_arena);
+    e = Name(id, Load, lineno, col_offset, endline, endcol, c->c_arena);
     if (!e)
         return NULL;
 
@@ -824,7 +859,7 @@ ast_for_dotted_name(struct compiling *c, const node *n)
         id = NEW_IDENTIFIER(CHILD(n, i));
         if (!id)
             return NULL;
-        e = Attribute(e, id, Load, lineno, col_offset, c->c_arena);
+        e = Attribute(e, id, Load, lineno, col_offset, endline, endcol, c->c_arena);
         if (!e)
             return NULL;
     }
@@ -853,7 +888,7 @@ ast_for_decorator(struct compiling *c, const node *n)
     }
     else if (NCH(n) == 5) { /* Call with no arguments */
         d = Call(name_expr, NULL, NULL, NULL, NULL, LINENO(n),
-                 n->n_col_offset, c->c_arena);
+                 n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         if (!d)
             return NULL;
         name_expr = NULL;
@@ -913,7 +948,7 @@ ast_for_funcdef(struct compiling *c, const node *n, asdl_seq *decorator_seq)
         return NULL;
 
     return FunctionDef(name, args, body, decorator_seq, LINENO(n),
-                       n->n_col_offset, c->c_arena);
+                       n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static stmt_ty
@@ -970,7 +1005,7 @@ ast_for_lambdef(struct compiling *c, const node *n)
             return NULL;
     }
 
-    return Lambda(args, expression, LINENO(n), n->n_col_offset, c->c_arena);
+    return Lambda(args, expression, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static expr_ty
@@ -990,7 +1025,7 @@ ast_for_ifexpr(struct compiling *c, const node *n)
     if (!orelse)
         return NULL;
     return IfExp(expression, body, orelse, LINENO(n), n->n_col_offset,
-                 c->c_arena);
+        GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 /* XXX(nnorwitz): the listcomp and genexpr code should be refactored
@@ -1112,7 +1147,7 @@ ast_for_listcomp(struct compiling *c, const node *n)
             lc = comprehension(first, expression, NULL, c->c_arena);
         else
             lc = comprehension(Tuple(t, Store, first->lineno, first->col_offset,
-                                     c->c_arena),
+                                     GetEndLine(ch), GetEndCol(ch), c->c_arena),
                                expression, NULL, c->c_arena);
         if (!lc)
             return NULL;
@@ -1152,7 +1187,7 @@ ast_for_listcomp(struct compiling *c, const node *n)
         asdl_seq_SET(listcomps, i, lc);
     }
 
-    return ListComp(elt, listcomps, LINENO(n), n->n_col_offset, c->c_arena);
+    return ListComp(elt, listcomps, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 /*
@@ -1253,7 +1288,7 @@ ast_for_comprehension(struct compiling *c, const node *n)
             comp = comprehension(first, expression, NULL, c->c_arena);
         else
             comp = comprehension(Tuple(t, Store, first->lineno, first->col_offset,
-                                     c->c_arena),
+                                     GetEndLine(n), GetEndCol(n), c->c_arena),
                                expression, NULL, c->c_arena);
         if (!comp)
             return NULL;
@@ -1310,9 +1345,9 @@ ast_for_itercomp(struct compiling *c, const node *n, int type)
         return NULL;
 
     if (type == COMP_GENEXP)
-        return GeneratorExp(elt, comps, LINENO(n), n->n_col_offset, c->c_arena);
+        return GeneratorExp(elt, comps, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     else if (type == COMP_SETCOMP)
-        return SetComp(elt, comps, LINENO(n), n->n_col_offset, c->c_arena);
+        return SetComp(elt, comps, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     else
         /* Should never happen */
         return NULL;
@@ -1339,7 +1374,7 @@ ast_for_dictcomp(struct compiling *c, const node *n)
     if (!comps)
         return NULL;
 
-    return DictComp(key, value, comps, LINENO(n), n->n_col_offset, c->c_arena);
+    return DictComp(key, value, comps, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static expr_ty
@@ -1371,7 +1406,7 @@ ast_for_atom(struct compiling *c, const node *n)
         PyObject *name = NEW_IDENTIFIER(ch);
         if (!name)
             return NULL;
-        return Name(name, Load, LINENO(n), n->n_col_offset, c->c_arena);
+        return Name(name, Load, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     case STRING: {
         PyObject *str = parsestrplus(c, n);
@@ -1399,7 +1434,7 @@ ast_for_atom(struct compiling *c, const node *n)
             return NULL;
         }
         PyArena_AddPyObject(c->c_arena, str);
-        return Str(str, LINENO(n), n->n_col_offset, c->c_arena);
+        return Str(str, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     case NUMBER: {
         PyObject *pynum = parsenumber(c, STR(ch));
@@ -1407,13 +1442,13 @@ ast_for_atom(struct compiling *c, const node *n)
             return NULL;
 
         PyArena_AddPyObject(c->c_arena, pynum);
-        return Num(pynum, LINENO(n), n->n_col_offset, c->c_arena);
+        return Num(pynum, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     case LPAR: /* some parenthesized expressions */
         ch = CHILD(n, 1);
 
         if (TYPE(ch) == RPAR)
-            return Tuple(NULL, Load, LINENO(n), n->n_col_offset, c->c_arena);
+            return Tuple(NULL, Load, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 
         if (TYPE(ch) == yield_expr)
             return ast_for_expr(c, ch);
@@ -1423,7 +1458,7 @@ ast_for_atom(struct compiling *c, const node *n)
         ch = CHILD(n, 1);
 
         if (TYPE(ch) == RSQB)
-            return List(NULL, Load, LINENO(n), n->n_col_offset, c->c_arena);
+            return List(NULL, Load, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 
         REQ(ch, listmaker);
         if (NCH(ch) == 1 || TYPE(CHILD(ch, 1)) == COMMA) {
@@ -1431,7 +1466,7 @@ ast_for_atom(struct compiling *c, const node *n)
             if (!elts)
                 return NULL;
 
-            return List(elts, Load, LINENO(n), n->n_col_offset, c->c_arena);
+            return List(elts, Load, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         }
         else
             return ast_for_listcomp(c, ch);
@@ -1446,7 +1481,7 @@ ast_for_atom(struct compiling *c, const node *n)
         ch = CHILD(n, 1);
         if (TYPE(ch) == RBRACE) {
             /* it's an empty dict */
-            return Dict(NULL, NULL, LINENO(n), n->n_col_offset, c->c_arena);
+            return Dict(NULL, NULL, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         } else if (NCH(ch) == 1 || TYPE(CHILD(ch, 1)) == COMMA) {
             /* it's a simple set */
             asdl_seq *elts;
@@ -1461,7 +1496,7 @@ ast_for_atom(struct compiling *c, const node *n)
                     return NULL;
                 asdl_seq_SET(elts, i / 2, expression);
             }
-            return Set(elts, LINENO(n), n->n_col_offset, c->c_arena);
+            return Set(elts, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         } else if (TYPE(CHILD(ch, 1)) == comp_for) {
             /* it's a set comprehension */
             return ast_for_setcomp(c, ch);
@@ -1493,7 +1528,7 @@ ast_for_atom(struct compiling *c, const node *n)
 
                 asdl_seq_SET(values, i / 4, expression);
             }
-            return Dict(keys, values, LINENO(n), n->n_col_offset, c->c_arena);
+            return Dict(keys, values, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         }
     }
     case BACKQUOTE: { /* repr */
@@ -1505,7 +1540,7 @@ ast_for_atom(struct compiling *c, const node *n)
         if (!expression)
             return NULL;
 
-        return Repr(expression, LINENO(n), n->n_col_offset, c->c_arena);
+        return Repr(expression, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     default:
         PyErr_Format(PyExc_SystemError, "unhandled atom %d", TYPE(ch));
@@ -1579,7 +1614,7 @@ ast_for_slice(struct compiling *c, const node *n)
             if (!none)
                 return NULL;
             ch = CHILD(ch, 0);
-            step = Name(none, Load, LINENO(ch), ch->n_col_offset, c->c_arena);
+            step = Name(none, Load, LINENO(ch), ch->n_col_offset, GetEndLine(ch), GetEndCol(ch), c->c_arena);
             if (!step)
                 return NULL;
         } else {
@@ -1620,7 +1655,7 @@ ast_for_binop(struct compiling *c, const node *n)
             return NULL;
 
         result = BinOp(expr1, newoperator, expr2, LINENO(n), n->n_col_offset,
-                       c->c_arena);
+                       GetEndLine(n), GetEndCol(n), c->c_arena);
         if (!result)
             return NULL;
 
@@ -1639,7 +1674,7 @@ ast_for_binop(struct compiling *c, const node *n)
 
                 tmp_result = BinOp(result, newoperator, tmp,
                                    LINENO(next_oper), next_oper->n_col_offset,
-                                   c->c_arena);
+                                   GetEndLine(next_oper), GetEndCol(next_oper), c->c_arena);
                 if (!tmp_result)
                         return NULL;
                 result = tmp_result;
@@ -1658,7 +1693,7 @@ ast_for_trailer(struct compiling *c, const node *n, expr_ty left_expr)
     if (TYPE(CHILD(n, 0)) == LPAR) {
         if (NCH(n) == 2)
             return Call(left_expr, NULL, NULL, NULL, NULL, LINENO(n),
-                        n->n_col_offset, c->c_arena);
+                        n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         else
             return ast_for_call(c, CHILD(n, 1), left_expr);
     }
@@ -1667,7 +1702,7 @@ ast_for_trailer(struct compiling *c, const node *n, expr_ty left_expr)
         if (!attr_id)
             return NULL;
         return Attribute(left_expr, attr_id, Load,
-                         LINENO(n), n->n_col_offset, c->c_arena);
+                         LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     else {
         REQ(CHILD(n, 0), LSQB);
@@ -1678,7 +1713,7 @@ ast_for_trailer(struct compiling *c, const node *n, expr_ty left_expr)
             if (!slc)
                 return NULL;
             return Subscript(left_expr, slc, Load, LINENO(n), n->n_col_offset,
-                             c->c_arena);
+                             GetEndLine(n), GetEndCol(n), c->c_arena);
         }
         else {
             /* The grammar is ambiguous here. The ambiguity is resolved
@@ -1703,7 +1738,7 @@ ast_for_trailer(struct compiling *c, const node *n, expr_ty left_expr)
             }
             if (!simple) {
                 return Subscript(left_expr, ExtSlice(slices, c->c_arena),
-                                 Load, LINENO(n), n->n_col_offset, c->c_arena);
+                                 Load, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
             }
             /* extract Index values and put them in a Tuple */
             elts = asdl_seq_new(asdl_seq_LEN(slices), c->c_arena);
@@ -1714,11 +1749,11 @@ ast_for_trailer(struct compiling *c, const node *n, expr_ty left_expr)
                 assert(slc->kind == Index_kind  && slc->v.Index.value);
                 asdl_seq_SET(elts, j, slc->v.Index.value);
             }
-            e = Tuple(elts, Load, LINENO(n), n->n_col_offset, c->c_arena);
+            e = Tuple(elts, Load, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
             if (!e)
                 return NULL;
             return Subscript(left_expr, Index(e, c->c_arena),
-                             Load, LINENO(n), n->n_col_offset, c->c_arena);
+                             Load, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         }
     }
 }
@@ -1756,7 +1791,7 @@ ast_for_factor(struct compiling *c, const node *n)
             return NULL;
 
         PyArena_AddPyObject(c->c_arena, pynum);
-        return Num(pynum, LINENO(n), n->n_col_offset, c->c_arena);
+        return Num(pynum, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
 
     expression = ast_for_expr(c, CHILD(n, 1));
@@ -1766,13 +1801,13 @@ ast_for_factor(struct compiling *c, const node *n)
     switch (TYPE(CHILD(n, 0))) {
         case PLUS:
             return UnaryOp(UAdd, expression, LINENO(n), n->n_col_offset,
-                           c->c_arena);
+                           GetEndLine(n), GetEndCol(n), c->c_arena);
         case MINUS:
             return UnaryOp(USub, expression, LINENO(n), n->n_col_offset,
-                           c->c_arena);
+                           GetEndLine(n), GetEndCol(n), c->c_arena);
         case TILDE:
             return UnaryOp(Invert, expression, LINENO(n),
-                           n->n_col_offset, c->c_arena);
+                           n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     PyErr_Format(PyExc_SystemError, "unhandled factor: %d",
                  TYPE(CHILD(n, 0)));
@@ -1807,7 +1842,7 @@ ast_for_power(struct compiling *c, const node *n)
         expr_ty f = ast_for_expr(c, CHILD(n, NCH(n) - 1));
         if (!f)
             return NULL;
-        tmp = BinOp(e, Pow, f, LINENO(n), n->n_col_offset, c->c_arena);
+        tmp = BinOp(e, Pow, f, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         if (!tmp)
             return NULL;
         e = tmp;
@@ -1876,9 +1911,9 @@ ast_for_expr(struct compiling *c, const node *n)
             }
             if (!strcmp(STR(CHILD(n, 1)), "and"))
                 return BoolOp(And, seq, LINENO(n), n->n_col_offset,
-                              c->c_arena);
+                              GetEndLine(n), GetEndCol(n), c->c_arena);
             assert(!strcmp(STR(CHILD(n, 1)), "or"));
-            return BoolOp(Or, seq, LINENO(n), n->n_col_offset, c->c_arena);
+            return BoolOp(Or, seq, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         case not_test:
             if (NCH(n) == 1) {
                 n = CHILD(n, 0);
@@ -1890,7 +1925,7 @@ ast_for_expr(struct compiling *c, const node *n)
                     return NULL;
 
                 return UnaryOp(Not, expression, LINENO(n), n->n_col_offset,
-                               c->c_arena);
+                               GetEndLine(n), GetEndCol(n), c->c_arena);
             }
         case comparison:
             if (NCH(n) == 1) {
@@ -1930,7 +1965,7 @@ ast_for_expr(struct compiling *c, const node *n)
                 }
 
                 return Compare(expression, ops, cmps, LINENO(n),
-                               n->n_col_offset, c->c_arena);
+                               n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
             }
             break;
 
@@ -1956,7 +1991,7 @@ ast_for_expr(struct compiling *c, const node *n)
                 if (!exp)
                     return NULL;
             }
-            return Yield(exp, LINENO(n), n->n_col_offset, c->c_arena);
+            return Yield(exp, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         }
         case factor:
             if (NCH(n) == 1) {
@@ -2107,7 +2142,7 @@ ast_for_call(struct compiling *c, const node *n, expr_ty func)
     }
 
     return Call(func, args, keywords, vararg, kwarg, func->lineno,
-                func->col_offset, c->c_arena);
+                func->col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static expr_ty
@@ -2133,7 +2168,7 @@ ast_for_testlist(struct compiling *c, const node* n)
         asdl_seq *tmp = seq_for_testlist(c, n);
         if (!tmp)
             return NULL;
-        return Tuple(tmp, Load, LINENO(n), n->n_col_offset, c->c_arena);
+        return Tuple(tmp, Load, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
 }
 
@@ -2187,7 +2222,7 @@ ast_for_expr_stmt(struct compiling *c, const node *n)
         if (!e)
             return NULL;
 
-        return Expr(e, LINENO(n), n->n_col_offset, c->c_arena);
+        return Expr(e, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     else if (TYPE(CHILD(n, 1)) == augassign) {
         expr_ty expr1, expr2;
@@ -2226,7 +2261,7 @@ ast_for_expr_stmt(struct compiling *c, const node *n)
             return NULL;
 
         return AugAssign(expr1, newoperator, expr2, LINENO(n), n->n_col_offset,
-                         c->c_arena);
+                         GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     else {
         int i;
@@ -2264,7 +2299,7 @@ ast_for_expr_stmt(struct compiling *c, const node *n)
         if (!expression)
             return NULL;
         return Assign(targets, expression, LINENO(n), n->n_col_offset,
-                      c->c_arena);
+                      GetEndLine(n), GetEndCol(n), c->c_arena);
     }
 }
 
@@ -2299,7 +2334,7 @@ ast_for_print_stmt(struct compiling *c, const node *n)
         }
     }
     nl = (TYPE(CHILD(n, NCH(n) - 1)) == COMMA) ? false : true;
-    return Print(dest, seq, nl, LINENO(n), n->n_col_offset, c->c_arena);
+    return Print(dest, seq, nl, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static asdl_seq *
@@ -2336,7 +2371,7 @@ ast_for_del_stmt(struct compiling *c, const node *n)
     expr_list = ast_for_exprlist(c, CHILD(n, 1), Del);
     if (!expr_list)
         return NULL;
-    return Delete(expr_list, LINENO(n), n->n_col_offset, c->c_arena);
+    return Delete(expr_list, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static stmt_ty
@@ -2358,35 +2393,35 @@ ast_for_flow_stmt(struct compiling *c, const node *n)
     ch = CHILD(n, 0);
     switch (TYPE(ch)) {
         case break_stmt:
-            return Break(LINENO(n), n->n_col_offset, c->c_arena);
+            return Break(LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         case continue_stmt:
-            return Continue(LINENO(n), n->n_col_offset, c->c_arena);
+            return Continue(LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         case yield_stmt: { /* will reduce to yield_expr */
             expr_ty exp = ast_for_expr(c, CHILD(ch, 0));
             if (!exp)
                 return NULL;
-            return Expr(exp, LINENO(n), n->n_col_offset, c->c_arena);
+            return Expr(exp, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         }
         case return_stmt:
             if (NCH(ch) == 1)
-                return Return(NULL, LINENO(n), n->n_col_offset, c->c_arena);
+                return Return(NULL, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
             else {
                 expr_ty expression = ast_for_testlist(c, CHILD(ch, 1));
                 if (!expression)
                     return NULL;
                 return Return(expression, LINENO(n), n->n_col_offset,
-                              c->c_arena);
+                              GetEndLine(n), GetEndCol(n), c->c_arena);
             }
         case raise_stmt:
             if (NCH(ch) == 1)
                 return Raise(NULL, NULL, NULL, LINENO(n), n->n_col_offset,
-                             c->c_arena);
+                             GetEndLine(n), GetEndCol(n), c->c_arena);
             else if (NCH(ch) == 2) {
                 expr_ty expression = ast_for_expr(c, CHILD(ch, 1));
                 if (!expression)
                     return NULL;
                 return Raise(expression, NULL, NULL, LINENO(n),
-                             n->n_col_offset, c->c_arena);
+                             n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
             }
             else if (NCH(ch) == 4) {
                 expr_ty expr1, expr2;
@@ -2399,7 +2434,7 @@ ast_for_flow_stmt(struct compiling *c, const node *n)
                     return NULL;
 
                 return Raise(expr1, expr2, NULL, LINENO(n), n->n_col_offset,
-                             c->c_arena);
+                             GetEndLine(n), GetEndCol(n), c->c_arena);
             }
             else if (NCH(ch) == 6) {
                 expr_ty expr1, expr2, expr3;
@@ -2415,7 +2450,7 @@ ast_for_flow_stmt(struct compiling *c, const node *n)
                     return NULL;
 
                 return Raise(expr1, expr2, expr3, LINENO(n), n->n_col_offset,
-                             c->c_arena);
+                             GetEndLine(n), GetEndCol(n), c->c_arena);
             }
         default:
             PyErr_Format(PyExc_SystemError,
@@ -2562,7 +2597,7 @@ ast_for_import_stmt(struct compiling *c, const node *n)
                 return NULL;
             asdl_seq_SET(aliases, i / 2, import_alias);
         }
-        return Import(aliases, lineno, col_offset, c->c_arena);
+        return Import(aliases, lineno, col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     else if (TYPE(n) == import_from) {
         int n_children;
@@ -2633,7 +2668,7 @@ ast_for_import_stmt(struct compiling *c, const node *n)
         if (mod != NULL)
             modname = mod->name;
         return ImportFrom(modname, aliases, ndots, lineno, col_offset,
-                          c->c_arena);
+                          GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     PyErr_Format(PyExc_SystemError,
                  "unknown import statement: starts with command '%s'",
@@ -2659,7 +2694,7 @@ ast_for_global_stmt(struct compiling *c, const node *n)
             return NULL;
         asdl_seq_SET(s, i / 2, name);
     }
-    return Global(s, LINENO(n), n->n_col_offset, c->c_arena);
+    return Global(s, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static stmt_ty
@@ -2703,7 +2738,7 @@ ast_for_exec_stmt(struct compiling *c, const node *n)
     }
 
     return Exec(expr1, globals, locals, LINENO(n), n->n_col_offset,
-                c->c_arena);
+                GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static stmt_ty
@@ -2716,7 +2751,7 @@ ast_for_assert_stmt(struct compiling *c, const node *n)
         if (!expression)
             return NULL;
         return Assert(expression, NULL, LINENO(n), n->n_col_offset,
-                      c->c_arena);
+                      GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     else if (NCH(n) == 4) {
         expr_ty expr1, expr2;
@@ -2728,7 +2763,7 @@ ast_for_assert_stmt(struct compiling *c, const node *n)
         if (!expr2)
             return NULL;
 
-        return Assert(expr1, expr2, LINENO(n), n->n_col_offset, c->c_arena);
+        return Assert(expr1, expr2, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     PyErr_Format(PyExc_SystemError,
                  "improper number of parts to 'assert' statement: %d",
@@ -2824,7 +2859,7 @@ ast_for_if_stmt(struct compiling *c, const node *n)
             return NULL;
 
         return If(expression, suite_seq, NULL, LINENO(n), n->n_col_offset,
-                  c->c_arena);
+                  GetEndLine(n), GetEndCol(n), c->c_arena);
     }
 
     s = STR(CHILD(n, 4));
@@ -2847,7 +2882,7 @@ ast_for_if_stmt(struct compiling *c, const node *n)
             return NULL;
 
         return If(expression, seq1, seq2, LINENO(n), n->n_col_offset,
-                  c->c_arena);
+                  GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     else if (s[2] == 'i') {
         int i, n_elif, has_else = 0;
@@ -2884,7 +2919,7 @@ ast_for_if_stmt(struct compiling *c, const node *n)
                          If(expression, suite_seq, suite_seq2,
                             LINENO(CHILD(n, NCH(n) - 6)),
                             CHILD(n, NCH(n) - 6)->n_col_offset,
-                            c->c_arena));
+                            GetEndLine(CHILD(n, NCH(n) - 6)), GetEndCol(CHILD(n, NCH(n) - 6)), c->c_arena));
             /* the just-created orelse handled the last elif */
             n_elif--;
         }
@@ -2904,7 +2939,7 @@ ast_for_if_stmt(struct compiling *c, const node *n)
             asdl_seq_SET(newobj, 0,
                          If(expression, suite_seq, orelse,
                             LINENO(CHILD(n, off)),
-                            CHILD(n, off)->n_col_offset, c->c_arena));
+                            CHILD(n, off)->n_col_offset, GetEndLine(CHILD(n, off)), GetEndCol(CHILD(n, off)), c->c_arena));
             orelse = newobj;
         }
         expression = ast_for_expr(c, CHILD(n, 1));
@@ -2914,7 +2949,7 @@ ast_for_if_stmt(struct compiling *c, const node *n)
         if (!suite_seq)
             return NULL;
         return If(expression, suite_seq, orelse,
-                  LINENO(n), n->n_col_offset, c->c_arena);
+                  LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
 
     PyErr_Format(PyExc_SystemError,
@@ -2939,7 +2974,7 @@ ast_for_while_stmt(struct compiling *c, const node *n)
         if (!suite_seq)
             return NULL;
         return While(expression, suite_seq, NULL, LINENO(n), n->n_col_offset,
-                     c->c_arena);
+                     GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     else if (NCH(n) == 7) {
         expr_ty expression;
@@ -2956,7 +2991,7 @@ ast_for_while_stmt(struct compiling *c, const node *n)
             return NULL;
 
         return While(expression, seq1, seq2, LINENO(n), n->n_col_offset,
-                     c->c_arena);
+                     GetEndLine(n), GetEndCol(n), c->c_arena);
     }
 
     PyErr_Format(PyExc_SystemError,
@@ -2991,7 +3026,7 @@ ast_for_for_stmt(struct compiling *c, const node *n)
     if (NCH(node_target) == 1)
         target = first;
     else
-        target = Tuple(_target, Store, first->lineno, first->col_offset, c->c_arena);
+        target = Tuple(_target, Store, first->lineno, first->col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 
     expression = ast_for_testlist(c, CHILD(n, 3));
     if (!expression)
@@ -3001,7 +3036,7 @@ ast_for_for_stmt(struct compiling *c, const node *n)
         return NULL;
 
     return For(target, expression, suite_seq, seq, LINENO(n), n->n_col_offset,
-               c->c_arena);
+               GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static excepthandler_ty
@@ -3119,7 +3154,7 @@ ast_for_try_stmt(struct compiling *c, const node *n)
         }
 
         except_st = TryExcept(body, handlers, orelse, LINENO(n),
-                              n->n_col_offset, c->c_arena);
+                              n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
         if (!finally)
             return except_st;
 
@@ -3133,7 +3168,7 @@ ast_for_try_stmt(struct compiling *c, const node *n)
 
     /* must be a try ... finally (except clauses are in body, if any exist) */
     assert(finally != NULL);
-    return TryFinally(body, finally, LINENO(n), n->n_col_offset, c->c_arena);
+    return TryFinally(body, finally, LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 /* with_item: test ['as' expr] */
@@ -3158,7 +3193,7 @@ ast_for_with_item(struct compiling *c, const node *n, asdl_seq *content)
     }
 
     return With(context_expr, optional_vars, content, LINENO(n),
-                n->n_col_offset, c->c_arena);
+                n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 /* with_stmt: 'with' with_item (',' with_item)* ':' suite */
@@ -3216,7 +3251,7 @@ ast_for_classdef(struct compiling *c, const node *n, asdl_seq *decorator_seq)
         if (!classname)
             return NULL;
         return ClassDef(classname, NULL, s, decorator_seq, LINENO(n),
-                        n->n_col_offset, c->c_arena);
+                        n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
     /* check for empty base list */
     if (TYPE(CHILD(n,3)) == RPAR) {
@@ -3227,7 +3262,7 @@ ast_for_classdef(struct compiling *c, const node *n, asdl_seq *decorator_seq)
         if (!classname)
             return NULL;
         return ClassDef(classname, NULL, s, decorator_seq, LINENO(n),
-                        n->n_col_offset, c->c_arena);
+                        n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
     }
 
     /* else handle the base class list */
@@ -3242,7 +3277,7 @@ ast_for_classdef(struct compiling *c, const node *n, asdl_seq *decorator_seq)
     if (!classname)
         return NULL;
     return ClassDef(classname, bases, s, decorator_seq,
-                    LINENO(n), n->n_col_offset, c->c_arena);
+                    LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
 }
 
 static stmt_ty
@@ -3270,7 +3305,7 @@ ast_for_stmt(struct compiling *c, const node *n)
             case del_stmt:
                 return ast_for_del_stmt(c, n);
             case pass_stmt:
-                return Pass(LINENO(n), n->n_col_offset, c->c_arena);
+                return Pass(LINENO(n), n->n_col_offset, GetEndLine(n), GetEndCol(n), c->c_arena);
             case flow_stmt:
                 return ast_for_flow_stmt(c, n);
             case import_stmt:
